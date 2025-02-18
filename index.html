@@ -72,9 +72,17 @@
                     products[index].quantity -= sell_quantity;
                     let profit = (sell_price - products[index].purchase_price) * sell_quantity;
                     products[index].total_profit += profit;
+
+                    // Store sales details
+                    if (!products[index].sales) {
+                        products[index].sales = [];
+                    }
+                    products[index].sales.push({ sell_price, sell_quantity });
+
                     renderTable();
                 }
             };
+
 
             window.editQuantity = (index) => {
                 let newQuantity = parseInt(document.getElementById(`edit_quantity_${index}`).value);
