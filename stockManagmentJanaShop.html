@@ -1,21 +1,11 @@
 <!DOCTYPE html>
-<html lang="ar">
-
+<html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>إدارة المخزون والأرباح</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <script type="module" src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js"></script>
-    <script type="module" src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js"></script>
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            direction: rtl;
-            text-align: right;
-            padding: 20px;
-        }
-
         .modal {
             display: none;
             position: fixed;
@@ -25,6 +15,7 @@
             padding: 20px;
             background: white;
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
         }
     </style>
 </head>
@@ -32,15 +23,19 @@
 <body>
     <div class="container">
         <h1 class="text-center my-4">إدارة المخزون والأرباح</h1>
-        <div class="card p-3">
+        
+        <!-- Add Product Form -->
+        <div class="card p-3 mb-4">
             <h2>إضافة منتج جديد</h2>
             <input type="text" id="productName" class="form-control my-2" placeholder="اسم المنتج">
             <input type="number" id="purchasePrice" class="form-control my-2" placeholder="سعر الشراء">
             <input type="number" id="quantity" class="form-control my-2" placeholder="الكمية">
             <button class="btn btn-success" onclick="addProduct()">إضافة منتج</button>
         </div>
+
+        <!-- Products Table -->
         <h2 class="my-4">المنتجات المتاحة</h2>
-        <table class="table table-striped" id="productsTable">
+        <table class="table table-striped">
             <thead>
                 <tr>
                     <th>اسم المنتج</th>
@@ -51,10 +46,27 @@
             </thead>
             <tbody id="productsList"></tbody>
         </table>
+
+        <!-- Sales Summary -->
+        <div class="card p-3 mt-4">
+            <h3>ملخص الأرباح</h3>
+            <p>إجمالي الدخل: <span id="totalIncome">0</span> ريال</p>
+            <p>صافي الربح: <span id="netProfit">0</span> ريال</p>
+        </div>
+
+        <!-- Sale Modal -->
+        <div id="saleModal" class="modal">
+            <h3>عملية بيع</h3>
+            <input type="number" id="salePrice" class="form-control my-2" placeholder="سعر البيع">
+            <button class="btn btn-primary" onclick="completeSale()">تأكيد البيع</button>
+            <button class="btn btn-secondary" onclick="closeModal()">إلغاء</button>
+        </div>
     </div>
+
     <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.3.1/firebase-app.js";
-        import { getAnalytics } from "https://www.gstatic.com/firebasejs/11.3.1/firebase-analytics.js";
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getFirestore, collection, addDoc, doc, updateDoc, onSnapshot, query } 
+            from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyBsQRxFCLDmRLgQYJRVGP6pcNl7KhJvrC0",
@@ -68,6 +80,7 @@
 
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
+        let currentProduct = null;
 
         async function addProduct() {
             const name = document.getElementById('productName').value;
@@ -79,35 +92,89 @@
                 purchasePrice,
                 quantity
             });
-            loadProducts();
+            document.getElementById('productName').value = '';
+            document.getElementById('purchasePrice').value = '';
+            document.getElementById('quantity').value = '';
         }
 
-        async function loadProducts() {
-            const querySnapshot = await getDocs(collection(db, "products"));
+        function sellProduct(id, currentQuantity) {
+            currentProduct = { id, currentQuantity };
+            document.getElementById('saleModal').style.display = 'block';
+        }
+
+        async function completeSale() {
+            const salePrice = parseFloat(document.getElementById('salePrice').value);
+            const productRef = doc(db, "products", currentProduct.id);
+            
+            // Update product quantity
+            await updateDoc(productRef, {
+                quantity: currentProduct.currentQuantity - 1
+            });
+
+            // Add sale record
+            const productDoc = await getDoc(productRef);
+            const productData = productDoc.data();
+            
+            await addDoc(collection(db, "sales"), {
+                productName: productData.name,
+                purchasePrice: productData.purchasePrice,
+                salePrice: salePrice,
+                timestamp: new Date()
+            });
+
+            closeModal();
+            updateSummary();
+        }
+
+        function closeModal() {
+            document.getElementById('saleModal').style.display = 'none';
+            document.getElementById('salePrice').value = '';
+            currentProduct = null;
+        }
+
+        // Real-time updates for products
+        const q = query(collection(db, "products"));
+        onSnapshot(q, (snapshot) => {
             const productsList = document.getElementById('productsList');
             productsList.innerHTML = "";
-            querySnapshot.forEach((doc) => {
+            
+            snapshot.forEach((doc) => {
                 const product = doc.data();
                 productsList.innerHTML += `
                     <tr>
                         <td>${product.name}</td>
                         <td>${product.purchasePrice.toFixed(2)}</td>
                         <td>${product.quantity}</td>
-                        <td><button class="btn btn-primary" onclick="sellProduct('${doc.id}', ${product.quantity})">بيع</button></td>
+                        <td>
+                            ${product.quantity > 0 ? 
+                                `<button class="btn btn-primary" 
+                                    onclick="sellProduct('${doc.id}', ${product.quantity})">
+                                    بيع
+                                </button>` : 
+                                'إنتهى المخزون'}
+                        </td>
                     </tr>`;
             });
+        });
+
+        // Update sales summary
+        async function updateSummary() {
+            const salesSnapshot = await getDocs(collection(db, "sales"));
+            let totalIncome = 0;
+            let totalCost = 0;
+
+            salesSnapshot.forEach((doc) => {
+                const sale = doc.data();
+                totalIncome += sale.salePrice;
+                totalCost += sale.purchasePrice;
+            });
+
+            document.getElementById('totalIncome').textContent = totalIncome.toFixed(2);
+            document.getElementById('netProfit').textContent = (totalIncome - totalCost).toFixed(2);
         }
 
-        async function sellProduct(id, quantity) {
-            if (quantity > 0) {
-                const productRef = doc(db, "products", id);
-                await updateDoc(productRef, { quantity: quantity - 1 });
-                loadProducts();
-            }
-        }
-
-        loadProducts();
+        // Initial load
+        updateSummary();
     </script>
 </body>
-
 </html>
