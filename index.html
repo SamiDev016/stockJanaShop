@@ -31,13 +31,14 @@
                         <tr>
                             <td>${product.name}</td>
                             <td>${product.purchase_price} د.ج</td>
-                            <td>${product.quantity}</td>
+                            <td><input type="number" id="edit_quantity_${index}" class="form-control" value="${product.quantity}" onchange="editQuantity(${index})"></td>
                             <td>
                                 <input type="number" id="sell_price_${index}" class="form-control mb-2" placeholder="سعر البيع" step="0.01" required>
                                 <input type="number" id="sell_quantity_${index}" class="form-control mb-2" placeholder="الكمية" required>
                                 <button class="btn btn-success" onclick="sellProduct(${index})">بيع</button>
                             </td>
                             <td>${product.total_profit} د.ج</td>
+                            <td><button class="btn btn-danger" onclick="deleteProduct(${index})">حذف</button></td>
                         </tr>
                     `;
                 });
@@ -66,6 +67,19 @@
                 }
             };
 
+            window.editQuantity = (index) => {
+                let newQuantity = parseInt(document.getElementById(`edit_quantity_${index}`).value);
+                if (newQuantity >= 0) {
+                    products[index].quantity = newQuantity;
+                    renderTable();
+                }
+            };
+
+            window.deleteProduct = (index) => {
+                products.splice(index, 1);
+                renderTable();
+            };
+
             renderTable();
         });
     </script>
@@ -90,6 +104,7 @@
                 <th>الكمية المتاحة</th>
                 <th>بيع</th>
                 <th>الربح الصافي</th>
+                <th>حذف</th>
             </tr>
         </thead>
         <tbody id="productTable"></tbody>
