@@ -10,6 +10,19 @@
             let products = JSON.parse(localStorage.getItem("products")) || [];
             const productTable = document.getElementById("productTable");
             const addProductForm = document.getElementById("addProductForm");
+            const totalProfitElement = document.getElementById("totalProfit");
+            const grossProfitElement = document.getElementById("grossProfit");
+
+            function calculateTotals() {
+                let totalProfit = 0;
+                let grossProfit = 0;
+                products.forEach(product => {
+                    totalProfit += product.total_profit;
+                    grossProfit += (product.purchase_price * product.quantity) + product.total_profit;
+                });
+                totalProfitElement.textContent = totalProfit + " د.ج";
+                grossProfitElement.textContent = grossProfit + " د.ج";
+            }
 
             function renderTable() {
                 productTable.innerHTML = "";
@@ -29,6 +42,7 @@
                     `;
                 });
                 localStorage.setItem("products", JSON.stringify(products));
+                calculateTotals();
             }
 
             addProductForm.addEventListener("submit", (event) => {
@@ -80,5 +94,10 @@
         </thead>
         <tbody id="productTable"></tbody>
     </table>
+    
+    <div class="mt-3">
+        <h4>الربح الصافي الإجمالي: <span id="totalProfit">0 د.ج</span></h4>
+        <h4>الربح الإجمالي: <span id="grossProfit">0 د.ج</span></h4>
+    </div>
 </body>
 </html>
