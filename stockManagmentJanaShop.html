@@ -1,50 +1,21 @@
 <!DOCTYPE html>
 <html lang="ar">
+
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>إدارة المخزون والأرباح</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script type="module" src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js"></script>
+    <script type="module" src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js"></script>
     <style>
         body {
             font-family: Arial, sans-serif;
             direction: rtl;
+            text-align: right;
             padding: 20px;
         }
-        .container {
-            max-width: 800px;
-            margin: 0 auto;
-        }
-        .product-form input, .sale-form input {
-            margin: 5px;
-            padding: 8px;
-        }
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin: 20px 0;
-        }
-        th, td {
-            border: 1px solid #ddd;
-            padding: 8px;
-            text-align: center;
-        }
-        th {
-            background-color: #f2f2f2;
-        }
-        button {
-            background-color: #4CAF50;
-            color: white;
-            padding: 8px 16px;
-            border: none;
-            cursor: pointer;
-        }
-        button:hover {
-            background-color: #45a049;
-        }
-        .summary {
-            background-color: #f9f9f9;
-            padding: 15px;
-            margin: 20px 0;
-        }
+
         .modal {
             display: none;
             position: fixed;
@@ -53,152 +24,90 @@
             transform: translate(-50%, -50%);
             padding: 20px;
             background: white;
-            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
         }
     </style>
 </head>
+
 <body>
     <div class="container">
-        <h1>إدارة المخزون والأرباح</h1>
-        
-        <!-- Add Product Form -->
-        <div class="product-form">
+        <h1 class="text-center my-4">إدارة المخزون والأرباح</h1>
+        <div class="card p-3">
             <h2>إضافة منتج جديد</h2>
-            <input type="text" id="productName" placeholder="اسم المنتج">
-            <input type="number" id="purchasePrice" placeholder="سعر الشراء">
-            <input type="number" id="quantity" placeholder="الكمية">
-            <button onclick="addProduct()">إضافة منتج</button>
+            <input type="text" id="productName" class="form-control my-2" placeholder="اسم المنتج">
+            <input type="number" id="purchasePrice" class="form-control my-2" placeholder="سعر الشراء">
+            <input type="number" id="quantity" class="form-control my-2" placeholder="الكمية">
+            <button class="btn btn-success" onclick="addProduct()">إضافة منتج</button>
         </div>
-
-        <!-- Products Table -->
-        <h2>المنتجات المتاحة</h2>
-        <table id="productsTable">
-            <tr>
-                <th>اسم المنتج</th>
-                <th>سعر الشراء</th>
-                <th>الكمية</th>
-                <th>العمليات</th>
-            </tr>
-        </table>
-
-        <!-- Sales Summary -->
-        <div class="summary">
-            <h3>ملخص الأرباح:</h3>
-            <p>إجمالي الدخل: <span id="totalIncome">0</span> دج</p>
-            <p>صافي الربح: <span id="netProfit">0</span> دج</p>
-        </div>
-
-        <!-- Sale Modal -->
-        <div id="saleModal" class="modal">
-            <h3>عملية بيع</h3>
-            <input type="number" id="salePrice" placeholder="سعر البيع">
-            <button onclick="completeSale()">تأكيد البيع</button>
-            <button onclick="closeModal()">إلغاء</button>
-        </div>
-    </div>
-
-    <script>
-        // Initialize session storage
-        let products = JSON.parse(sessionStorage.getItem('products')) || [];
-        let sales = JSON.parse(sessionStorage.getItem('sales')) || [];
-        let currentProduct = null;
-
-        // Load initial data
-        window.onload = function() {
-            renderProducts();
-            updateSummary();
-        };
-
-        function addProduct() {
-            const product = {
-                name: document.getElementById('productName').value,
-                purchasePrice: parseFloat(document.getElementById('purchasePrice').value),
-                quantity: parseInt(document.getElementById('quantity').value)
-            };
-
-            products.push(product);
-            sessionStorage.setItem('products', JSON.stringify(products));
-            renderProducts();
-            clearForm();
-        }
-
-        function sellProduct(index) {
-            currentProduct = index;
-            document.getElementById('saleModal').style.display = 'block';
-        }
-
-        function completeSale() {
-            const salePrice = parseFloat(document.getElementById('salePrice').value);
-            const product = products[currentProduct];
-            
-            if (product.quantity > 0) {
-                product.quantity--;
-                
-                sales.push({
-                    productName: product.name,
-                    purchasePrice: product.purchasePrice,
-                    salePrice: salePrice
-                });
-
-                sessionStorage.setItem('products', JSON.stringify(products));
-                sessionStorage.setItem('sales', JSON.stringify(sales));
-                
-                renderProducts();
-                updateSummary();
-                closeModal();
-            }
-        }
-
-        function closeModal() {
-            document.getElementById('saleModal').style.display = 'none';
-            document.getElementById('salePrice').value = '';
-        }
-
-        function renderProducts() {
-            const table = document.getElementById('productsTable');
-            table.innerHTML = `
+        <h2 class="my-4">المنتجات المتاحة</h2>
+        <table class="table table-striped" id="productsTable">
+            <thead>
                 <tr>
                     <th>اسم المنتج</th>
                     <th>سعر الشراء</th>
                     <th>الكمية</th>
                     <th>العمليات</th>
                 </tr>
-            `;
+            </thead>
+            <tbody id="productsList"></tbody>
+        </table>
+    </div>
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.3.1/firebase-app.js";
+        import { getAnalytics } from "https://www.gstatic.com/firebasejs/11.3.1/firebase-analytics.js";
 
-            products.forEach((product, index) => {
-                table.innerHTML += `
+        const firebaseConfig = {
+            apiKey: "AIzaSyBsQRxFCLDmRLgQYJRVGP6pcNl7KhJvrC0",
+            authDomain: "stockjana-d28f2.firebaseapp.com",
+            projectId: "stockjana-d28f2",
+            storageBucket: "stockjana-d28f2.firebasestorage.app",
+            messagingSenderId: "523943761751",
+            appId: "1:523943761751:web:ebe55f5056cb5fe0e35012",
+            measurementId: "G-MKKB1Y3QT7"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        async function addProduct() {
+            const name = document.getElementById('productName').value;
+            const purchasePrice = parseFloat(document.getElementById('purchasePrice').value);
+            const quantity = parseInt(document.getElementById('quantity').value);
+
+            await addDoc(collection(db, "products"), {
+                name,
+                purchasePrice,
+                quantity
+            });
+            loadProducts();
+        }
+
+        async function loadProducts() {
+            const querySnapshot = await getDocs(collection(db, "products"));
+            const productsList = document.getElementById('productsList');
+            productsList.innerHTML = "";
+            querySnapshot.forEach((doc) => {
+                const product = doc.data();
+                productsList.innerHTML += `
                     <tr>
                         <td>${product.name}</td>
                         <td>${product.purchasePrice.toFixed(2)}</td>
                         <td>${product.quantity}</td>
-                        <td>
-                            ${product.quantity > 0 ? 
-                                `<button onclick="sellProduct(${index})">بيع</button>` : 
-                                'إنتهى المخزون'}
-                        </td>
-                    </tr>
-                `;
+                        <td><button class="btn btn-primary" onclick="sellProduct('${doc.id}', ${product.quantity})">بيع</button></td>
+                    </tr>`;
             });
         }
 
-        function updateSummary() {
-            let totalIncome = 0;
-            let totalCost = 0;
-
-            sales.forEach(sale => {
-                totalIncome += sale.salePrice;
-                totalCost += sale.purchasePrice;
-            });
-
-            document.getElementById('totalIncome').textContent = totalIncome.toFixed(2);
-            document.getElementById('netProfit').textContent = (totalIncome - totalCost).toFixed(2);
+        async function sellProduct(id, quantity) {
+            if (quantity > 0) {
+                const productRef = doc(db, "products", id);
+                await updateDoc(productRef, { quantity: quantity - 1 });
+                loadProducts();
+            }
         }
 
-        function clearForm() {
-            document.getElementById('productName').value = '';
-            document.getElementById('purchasePrice').value = '';
-            document.getElementById('quantity').value = '';
-        }
+        loadProducts();
     </script>
 </body>
+
 </html>
